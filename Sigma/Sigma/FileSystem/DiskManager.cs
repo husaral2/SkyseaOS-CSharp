@@ -9,36 +9,39 @@ namespace Sigma.FileSystem
     {
         static ATA_PIO[] ataDevices = new ATA_PIO[4];
 
-        public static void InitalizeDisks()
+        public static bool InitalizeDisks()
         {
+            bool isFound = false;
             for(int i = 0; i < 4; ++i)
             {
                 if(i > 1)
                 {
                     ataDevices[i] = new ATA_PIO(new Cosmos.Core.IOGroup.ATA(true),Ata.ControllerIdEnum.Secondary, (Ata.BusPositionEnum) i - 2);
-                    GetInformation(i);
+                    isFound = !(GetInformation(i) < 1) || isFound;
                     continue;
                 }
                 ataDevices[i] = new ATA_PIO(new Cosmos.Core.IOGroup.ATA(false), Ata.ControllerIdEnum.Primary, (Ata.BusPositionEnum) i);
+                isFound = !(GetInformation(i) < 1) || isFound;
             }
+            return isFound;
         }
 
         //Checks if the device exists or not, returns false if the device type is null
-        public static bool GetInformation(int DeviceNo)
+        public static sbyte GetInformation(int DeviceNo)
         {
             switch (ataDevices[DeviceNo].DiscoverDrive())
             {
                 case ATA_PIO.SpecLevel.Null:
                     Console.WriteLine("This drive does not exist.");
-                    return false;
+                    return 0;
                 case ATA_PIO.SpecLevel.ATA:
                     Console.WriteLine("Drive type: ATA");
-                    return true;
+                    return 1;
                 case ATA_PIO.SpecLevel.ATAPI:
                     Console.WriteLine("Drive type: ATAPI");
-                    return true;
+                    return 2;
                 default:
-                    return false;
+                    return -1;
             }
         }
 
@@ -47,7 +50,7 @@ namespace Sigma.FileSystem
         {
             for(int i = 0; i < ataDevices.Length; ++i)
             {
-                if(GetInformation(i))
+                if(GetInformation(i) > 0)
                     Console.WriteLine(i + ": " + (ataDevices[i].BlockCount + " " + ataDevices[i].BlockSize) + " LBA: "+ ataDevices[i].LBA48Bit);
             }
         }

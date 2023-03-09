@@ -11,7 +11,12 @@ namespace Sigma
         protected override void BeforeRun()
         {
             //Search for ATA disks
-            FS.DiskManager.InitalizeDisks();
+            if (!FS.DiskManager.InitalizeDisks())
+            {
+                Console.WriteLine("There is no harddrive device was found, system will halt.");
+                Console.ReadLine();
+                throw new InvalidOperationException();
+            }
             FS.Controller.InitializeFilesystem();
             Console.WriteLine("Welcome to Codename Sigma!");
         }
@@ -117,6 +122,9 @@ namespace Sigma
                     break;
                 case "atainf":
                     FS.DiskManager.GetDetailedInformation();
+                    break;
+                case "kbd":
+                    Usage.KeyboardSettings.ChangeKeyboard(command.Split(' ')[1]);
                     break;
                 case "info":
                     Console.WriteLine("Codename Sigma 0.1.0");
