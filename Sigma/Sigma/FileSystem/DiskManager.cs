@@ -2,12 +2,14 @@
 using Cosmos.System.FileSystem;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Sigma.FileSystem
 {
     internal class DiskManager
     {
         static ATA_PIO[] ataDevices = new ATA_PIO[4];
+        public static BlockDevice[] devices = ATA_PIO.Devices.ToArray();
 
         public static bool InitalizeDisks()
         {
@@ -48,21 +50,29 @@ namespace Sigma.FileSystem
         //Gets device type, block size, block type, LBA availablity
         public static void GetDetailedInformation()
         {
-            for(int i = 0; i < ataDevices.Length; ++i)
+            List<Disk> a = Controller.fs.GetDisks();
+            for(int i = 0; i < a.Count; ++i)
             {
-                if(GetInformation(i) > 0)
-                    Console.WriteLine(i + ": " + (ataDevices[i].BlockCount + " " + ataDevices[i].BlockSize) + " LBA: "+ ataDevices[i].LBA48Bit);
+                a[i].DisplayInformation();
+                foreach (ManagedPartition mp in a[i].Partitions)
+                    Console.WriteLine(mp.HasFileSystem);
+                
             }
         }
 
-        //Will be removed?
-        public static bool InitalizeISOFS(BlockDevice device)
+        public static void FormatFAT(Partition device)
         {
-            if (device.Type != BlockDeviceType.RemovableCD)
-                return false;
-            if (device.BlockCount == 0)
-                return false;
-            throw new NotImplementedException();
+            Cosmos.System.FileSystem.FAT.FatFileSystemFactory factory = new Cosmos.System.FileSystem.FAT.FatFileSystemFactory();
+            Cosmos.System.FileSystem.VFS.FileSystemManager.Register(factory);
+            Cosmos.System.FileSystem.FileSystem fs = factory.Create(device, "0:", (long)device.BlockSize);
+            fs.Format("FAT32", false);
+        }
+
+        public static void CreateNewBootSector(BlockDevice device)
+        {
+            byte[] xBPB = device.NewBlockArray(1);
+            
+            device.WriteBlock(0, 1, ref xBPB);
         }
     }
 }

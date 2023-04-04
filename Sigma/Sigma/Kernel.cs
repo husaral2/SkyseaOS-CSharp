@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Sigma.Usage;
+using System;
 using FS = Sigma.FileSystem;
 using Sys = Cosmos.System;
 
@@ -10,14 +11,11 @@ namespace Sigma
 
         protected override void BeforeRun()
         {
-            //Search for ATA disks
-            if (!FS.DiskManager.InitalizeDisks())
-            {
-                Console.WriteLine("There is no harddrive device was found, system will halt.");
-                Console.ReadLine();
-                throw new InvalidOperationException();
-            }
             FS.Controller.InitializeFilesystem();
+            if (FS.DiskManager.InitalizeDisks()) {
+                //UserManager.UserList.Add(new User("0:\\testuser.conf", "Test"));
+                //UserManager.UserList[0].LoadPreferences();
+            }
             Console.WriteLine("Welcome to Codename Sigma!");
         }
 
@@ -35,6 +33,12 @@ namespace Sigma
                     string[] splitted = Helper.SpecialSplit(command);
                     if (splitted.Length > 1)
                     {
+                        if (splitted[1].Contains(':'))
+                        {
+                            FS.Controller.SetCurrentDirectory(splitted[1]);
+                            break;
+                        }
+
                         foreach (string s in splitted[1].Split('\\'))
                         {
                             if (s == "..")
@@ -89,7 +93,6 @@ namespace Sigma
                         System.IO.File.Copy(src, dst);
                     else
                         Console.WriteLine("The file you are trying to copy doesn't exist.");
-
                     break;
                 case "move":
                     splitted = Helper.SpecialSplit(command);
@@ -123,17 +126,38 @@ namespace Sigma
                 case "atainf":
                     FS.DiskManager.GetDetailedInformation();
                     break;
+                case "format":
+                    if (command.Split(' ').Length < 2)
+                        break;
+                    Console.WriteLine("Caution! All data in this drive will be gone forever! Do you want to continue? [(Y)es/(N)o]");
+                    if (Console.ReadLine().ToLower() == "y")
+                    {
+                        try
+                        {
+                            FS.DiskManager.FormatFAT(new Cosmos.HAL.BlockDevice.Partition(FS.DiskManager.devices[Convert.ToInt32(command.Split(' ')[1])], 0, FS.DiskManager.devices[Convert.ToInt32(command.Split(' ')[1])].BlockCount));
+                        }
+                        catch (Exception excp) {
+                            Console.WriteLine(excp.Message);
+                        }
+                    }
+                    break;
                 case "kbd":
-                    Usage.KeyboardSettings.ChangeKeyboard(command.Split(' ')[1]);
+                    KeyboardSettings.ChangeKeyboard(command.Split(' ')[1]);
+                    break;
+                case "test":
+                    Console.WriteLine(Helper.Bin2Dec("1001001")[0]);
                     break;
                 case "info":
                     Console.WriteLine("Codename Sigma 0.1.0");
                     break;
                 case "shutdown":
                     splitted = command.Split(' ');
+                    if (splitted.Length < 2)
+                        break;
                     switch (splitted[1])
                     {
                         case "-s":
+                            UserManager.UserList[0].SavePreferences();
                             Cosmos.Core.ACPI.Shutdown();
                             break;
                         case "-r":
