@@ -9,7 +9,7 @@ namespace Sigma.Usage
     internal class UserManager
     {
         public static List<User> UserList = new List<User>();
-        
+
         public static bool DeleteUser(int UserIndex)
         {
             if (UserIndex >= UserList.Count)

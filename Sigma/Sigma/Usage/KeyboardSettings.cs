@@ -12,28 +12,32 @@ namespace Sigma.Usage
         public static string Language = "en_US";
         public static string KeyboardLayout = "US_Standard";
 
-        public static void ChangeKeyboard(string Layout)
+        public static bool ChangeKeyboard(string Layout)
         {
             switch (Layout) {
                 case "TR_StandardQ":
-                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.TR_StandardQ());
+                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.TRStandardLayout());
                     KeyboardLayout = "TR_StandardQ";
-                    break;
+                    return true;
                 case "US_Standard":
-                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.US_Standard());
+                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.USStandardLayout());
                     KeyboardLayout = "US_Standard";
-                    break;
+                    return true;
                 case "DE_Standard":
-                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.DE_Standard());
+                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.DEStandardLayout());
                     KeyboardLayout = "DE_Standard";
-                    break;
+                    return true;
                 case "FR_Standard":
-                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.FR_Standard());
+                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.FRStandardLayout());
                     KeyboardLayout = "FR_Standard";
-                    break;
+                    return true;
+                case "ES_Standard":
+                    Cosmos.System.KeyboardManager.SetKeyLayout(new Cosmos.System.ScanMaps.ESStandardLayout());
+                    KeyboardLayout = "ES_Standard";
+                    return true;
                 default:
                     Console.WriteLine("The map hasn't been implemented yet or doesn't exist.");
-                    break;
+                    return false;
             }
         }
     }

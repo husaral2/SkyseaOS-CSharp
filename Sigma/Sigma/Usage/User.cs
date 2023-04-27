@@ -10,7 +10,7 @@ namespace Sigma.Usage
     internal class User
     {
         private static int UserCount = 0;
-        private int Level = (int) PrivilageLevel.Guest; //is not used
+        private int Level = (int) PrivilageLevel.Guest; //is not used yet
         private string ConfigFilePath;
         private string Name;
 
