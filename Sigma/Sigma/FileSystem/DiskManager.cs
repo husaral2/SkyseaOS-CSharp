@@ -1,4 +1,6 @@
-﻿using Cosmos.HAL.BlockDevice;
+﻿using Cosmos.Core;
+using Cosmos.HAL;
+using Cosmos.HAL.BlockDevice;
 using Cosmos.System.FileSystem;
 using System;
 using System.Collections.Generic;
@@ -11,7 +13,7 @@ namespace Sigma.FileSystem
         static ATA_PIO[] ataDevices = new ATA_PIO[4];
         public static BlockDevice[] devices = ATA_PIO.Devices.ToArray();
 
-        public static bool InitalizeDisks()
+        public static bool SearchForDisks()
         {
             bool isFound = false;
             for(int i = 0; i < 4; ++i)
@@ -60,19 +62,15 @@ namespace Sigma.FileSystem
             }
         }
 
-        public static void FormatFAT(Partition device)
+        public static void Format(Partition device)
         {
-            Cosmos.System.FileSystem.FAT.FatFileSystemFactory factory = new Cosmos.System.FileSystem.FAT.FatFileSystemFactory();
-            Cosmos.System.FileSystem.VFS.FileSystemManager.Register(factory);
-            Cosmos.System.FileSystem.FileSystem fs = factory.Create(device, "0:", (long)device.BlockSize);
-            fs.Format("FAT32", false);
+            Disk disk = new Disk(device.Host);
+            MBR mbr = new MBR(device.Host);
+            mbr.CreateMBR(device.Host);
+            mbr.WritePartitionInformation(device, 0);
+            disk.Mount();            
+            disk.FormatPartition(0, "FAT32");
         }
 
-        public static void CreateNewBootSector(BlockDevice device)
-        {
-            byte[] xBPB = device.NewBlockArray(1);
-            
-            device.WriteBlock(0, 1, ref xBPB);
-        }
     }
 }

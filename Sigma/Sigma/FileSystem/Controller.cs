@@ -44,7 +44,7 @@ namespace Sigma.FileSystem
 
         public static void GoBack()
         {
-            string[] splitted = CurrentDirectory.Split('\\');
+            string[] splitted = CurrentDirectory.Split('\\', StringSplitOptions.RemoveEmptyEntries);
             if (splitted.Length == 1)
                 return;
             CurrentDirectory = CurrentDirectory.Remove(CurrentDirectory.LastIndexOf('\\'));
