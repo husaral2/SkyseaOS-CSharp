@@ -1,6 +1,4 @@
-﻿using Cosmos.Core;
-using Cosmos.HAL;
-using Cosmos.HAL.BlockDevice;
+﻿using Cosmos.HAL.BlockDevice;
 using Cosmos.System.FileSystem;
 using Cosmos.System.FileSystem.FAT;
 using System;
@@ -11,30 +9,32 @@ namespace Skysea.FileSystem
 {
     internal class DiskManager
     {
-        static ATA_PIO[] ataDevices = new ATA_PIO[4];
-        public static BlockDevice[] devices = ATA_PIO.Devices.ToArray();
+        public static ATA_PIO[] devices = new ATA_PIO[4];
 
-        public static bool SearchForDisks()
+        public static void SearchForDisks()
         {
             bool isFound = false;
+
             for(int i = 0; i < 4; ++i)
             {
                 if(i > 1)
                 {
-                    ataDevices[i] = new ATA_PIO(new Cosmos.Core.IOGroup.ATA(true),Ata.ControllerIdEnum.Secondary, (Ata.BusPositionEnum) i - 2);
-                    isFound = !(GetInformation(i) < 1) || isFound;
+                    devices[i] = new ATA_PIO(new Cosmos.Core.IOGroup.ATA(true),Ata.ControllerIdEnum.Secondary, (Ata.BusPositionEnum) i - 2);
+                    isFound = GetInformation(i) == 1 || isFound;
                     continue;
                 }
-                ataDevices[i] = new ATA_PIO(new Cosmos.Core.IOGroup.ATA(false), Ata.ControllerIdEnum.Primary, (Ata.BusPositionEnum) i);
-                isFound = !(GetInformation(i) < 1) || isFound;
+                devices[i] = new ATA_PIO(new Cosmos.Core.IOGroup.ATA(false), Ata.ControllerIdEnum.Primary, (Ata.BusPositionEnum) i);
+                isFound = GetInformation(i) == 1 || isFound;
             }
-            return isFound;
+
+            if (!isFound)
+                throw new DriveNotFoundException("No drive was found.");
         }
 
         //Checks if the device exists or not, returns false if the device type is null
         public static sbyte GetInformation(int DeviceNo)
         {
-            switch (ataDevices[DeviceNo].DiscoverDrive())
+            switch (devices[DeviceNo].DiscoverDrive())
             {
                 case ATA_PIO.SpecLevel.Null:
                     Console.WriteLine("This drive does not exist.");

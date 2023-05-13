@@ -7,23 +7,32 @@ namespace Skysea
 {
     public class Kernel : Sys.Kernel
     {
-        //SkyseaOS 0.1.1 [Milestone 0]
+        //SkyseaOS 0.1.2 [Milestone 0]
 
         protected override void BeforeRun()
         {
-            if (FS.DiskManager.SearchForDisks()) {
+            try
+            {
+                FS.DiskManager.SearchForDisks();
                 Console.Write("Initializing the filesystem: ");
                 FS.Controller.InitializeFilesystem();
                 Console.WriteLine("done!");
                 //UserManager.UserList.Add(new User("0:\\testuser.conf", "Test"));
                 //UserManager.UserList[0].LoadPreferences();
             }
-            else
+            catch(Exception excp)
             {
-                Console.WriteLine("No harddisk was detected. Therefore, Codename Sigma can't start." +
-                    "\n Please check for any disconnected cables or harddisk errors. " +
-                    "\nIf you have no problem on your drive, leave a bug report!");
+                Console.BackgroundColor = ConsoleColor.DarkMagenta;
+                Console.Clear();
+                Console.WriteLine("An exception has ocurred!\n");
+                Console.WriteLine(excp.Message);
+                Console.WriteLine("\nIf you are seeing this first time, you might try restarting.\n" +
+                    "If that did not work, please check for any hardware problems.\n" +
+                    "If you are sure you do not have any problems, please leave a bug report!");
+                Console.ReadKey();
+                Cosmos.Core.CPU.Reboot();
             }
+
 
             CLI.CommandFunction.Initalize();
             Console.ReadLine();

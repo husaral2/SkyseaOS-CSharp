@@ -9,6 +9,7 @@ namespace Skysea.CLI
     {
         //All of the CLI functions listed in a dictionary - The word for invoking method | Invoked method
         static Dictionary<string, Func<string, bool>> functions = new Dictionary<string, Func<string, bool>>();
+        static string[] splitted;
 
         public static void Initalize()
         {
@@ -25,11 +26,28 @@ namespace Skysea.CLI
 
             //Read a file's content
             functions.Add("read", delegate (string input) {
-                string[] splitted = Helper.SpecialSplit(input);
+                splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 if (File.Exists(file))
                 {
                     Console.WriteLine(File.ReadAllText(file));
+                    return true;
+                }
+                return false;
+            });
+
+            functions.Add("cat", delegate (string input)
+            {
+                splitted = Helper.SpecialSplit(input);
+                string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
+                if (File.Exists(file))
+                {
+                    StreamWriter stream = new StreamWriter(new FileStream(file, FileMode.Append, FileAccess.Write));
+
+                    //Nobody would want the path of the file at the file itself (and the command they used)
+                    stream.WriteLine(input.Remove(0, splitted[1].Length + 5));
+                    stream.Close();
+
                     return true;
                 }
                 return false;
@@ -49,9 +67,9 @@ namespace Skysea.CLI
             });
 
             //Create a new directory
-            functions.Add("newd", delegate(string input)
+            functions.Add("nwdir", delegate(string input)
             {
-                string[] splitted = Helper.SpecialSplit(input);
+                splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 if (file.IndexOfAny(FS.Controller.invalidCharacters) >= 0)
                 {
@@ -64,7 +82,7 @@ namespace Skysea.CLI
 
             //Remove a file
             functions.Add("remove", delegate(string input) {
-                string[] splitted = Helper.SpecialSplit(input);
+                splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 if (File.Exists(file))
                 {
@@ -76,8 +94,8 @@ namespace Skysea.CLI
             });
 
             //Remove a directory
-            functions.Add("removed", delegate (string input) {
-                string[] splitted = Helper.SpecialSplit(input);
+            functions.Add("rmdir", delegate (string input) {
+                splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 if (Directory.Exists(file))
                 {
@@ -89,7 +107,7 @@ namespace Skysea.CLI
             });
 
             //Copy a file
-            functions.Add("cpy", delegate(string input) {
+            functions.Add("copy", delegate(string input) {
                 string[] splitted = Helper.SpecialSplit(input);
                 string src = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 string dst = Helper.FindPath(splitted[2], FS.Controller.GetCurrentDirectory());
@@ -105,7 +123,7 @@ namespace Skysea.CLI
             //Move a file
             functions.Add("move", delegate(string input)
             {
-                string[] splitted = Helper.SpecialSplit(input);
+                splitted = Helper.SpecialSplit(input);
                 string src = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 string dst = Helper.FindPath(splitted[2], FS.Controller.GetCurrentDirectory());
                 if (File.Exists(src))
@@ -116,6 +134,37 @@ namespace Skysea.CLI
                 }
                 Console.WriteLine("The file you are trying to move doesn't exist.");
                 return false;
+            });
+
+            //Formatting the drive in FAT32
+            functions.Add("format", delegate (string input)
+            {
+                splitted = input.Split(' ');
+                if (splitted.Length < 3)
+                    return false;
+
+                uint startsector = Convert.ToUInt32(splitted[2]);
+
+                //If there is a 3rd argument, it will set the size of the of the partition to that argument, else the partition size will be block count minus 2048 by default
+                uint size = (uint)(splitted.Length < 4 ? FS.DiskManager.devices[Convert.ToInt32(splitted[1])].BlockCount - 2048 : Convert.ToUInt32(splitted[3]));
+
+                Console.WriteLine("Warning! All data in this drive will be gone forever! Do you want to continue? [(Y)es/(N)o]");
+                if (Console.ReadLine().ToLower() == "y" && startsector > 511)
+                {
+                    try
+                    {
+                        FS.DiskManager.Format(new Cosmos.HAL.BlockDevice.Partition(FS.DiskManager.devices[Convert.ToInt32(splitted[1])], startsector - 1, size));
+                        return true;
+                    }
+                    catch (Exception excp)
+                    {
+                        Console.WriteLine(excp.Message);
+                        return false;
+                    }
+                }
+                else if (startsector < 511)
+                    Console.WriteLine("The partition can't start before the 512. sector");
+                    return false;
             });
 
             functions.Add("cd", new Func<string, bool>(FS.FileManager.Navigate));
@@ -132,7 +181,7 @@ namespace Skysea.CLI
                     return;
                 }
             }
-            Console.WriteLine("The command doesn' exist.");
+            Console.WriteLine("The command doesn't exist.");
         }
     }
 }
