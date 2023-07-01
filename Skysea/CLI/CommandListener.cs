@@ -1,8 +1,6 @@
 ﻿using Skysea.Usage;
 using FS = Skysea.FileSystem;
 using System;
-using Cosmos.HAL.BlockDevice;
-using Skysea.FileSystem.Ext2;
 
 namespace Skysea.CLI
 {
@@ -17,7 +15,7 @@ namespace Skysea.CLI
                     if (splitted.Length > 1)
                         Console.WriteLine(command.Remove(0, 5));
                     break;
-                case "clc":
+                 case "clc":
                     Console.Clear();
                     break;
                 case "gcd":
@@ -27,37 +25,47 @@ namespace Skysea.CLI
                     Console.WriteLine("CPU: " + Cosmos.Core.CPU.GetCPUVendorName() + " " + Cosmos.Core.CPU.GetCPUBrandString());
                     Console.WriteLine("Uptime: " + Cosmos.Core.CPU.GetCPUUptime() / (ulong)Cosmos.Core.CPU.GetCPUCycleSpeed() + "s");
                     Console.WriteLine("RAM: " + Cosmos.Core.CPU.GetAmountOfRAM() + " Free: " + Cosmos.Core.GCImplementation.GetAvailableRAM());
-                    break;
-                case "isext2":
-                    try
-                    {
-                        MBR mbr = new MBR(FS.DiskManager.devices[0]);
-                        Ext2FileSystemFactory fs = new();
-                        Console.WriteLine(fs.IsType(new Partition(FS.DiskManager.devices[0], mbr.Partitions[0].StartSector, mbr.Partitions[0].SectorCount)));
-                        Ext2FileSystem ext2 = (Ext2FileSystem) fs.Create(new Partition(FS.DiskManager.devices[0], mbr.Partitions[0].StartSector, mbr.Partitions[0].SectorCount), "1:\\", 434);
-                        ext2.DisplayFileSystemInfo();
+                     break;
+                #region Ext2 Test Code
+                /*case "isext2":
+                try
+                {
+                    MBR mbr = new MBR(FS.DiskManager.devices[0]);
+                    Ext2FileSystemFactory fs = new();
+                    Console.WriteLine(fs.IsType(new Partition(FS.DiskManager.devices[0], mbr.Partitions[0].StartSector, mbr.Partitions[0].SectorCount)));
+                    Ext2FileSystem ext2 = (Ext2FileSystem) fs.Create(new Partition(FS.DiskManager.devices[0], mbr.Partitions[0].StartSector, mbr.Partitions[0].SectorCount), "1:\\", 434);
+                    ext2.DisplayFileSystemInfo();
 
-                        for(uint i = 1; i < 512; ++i)
+                    for(uint i = 1; i < 256; ++i)
+                    {
+                        Console.WriteLine(i);
+                        Inode inode = ext2.ReadInode(i);
+                        for(int j = 0; j < 12; ++j)
                         {
-                            Console.WriteLine(i);
-                            Inode inode = ext2.ReadInode(i);
-                            for(int j = 0; j < 12; ++j)
-                            {
-                                Console.Write(inode.DirectBlockPointers[j] + " ");
-                                if (j % 3 == 0)
-                                    Console.WriteLine();
-                            }
-                            Console.WriteLine(inode.SingleIndirectBlockPointer + " " + inode.DoubleIndirectBlockPointer + " " + inode.TripleIndirectBlockPointer);
-                            Console.ReadLine();
+                            Console.Write(inode.DirectBlockPointers[j] + " ");
+                            if (j % 3 == 0)
+                                Console.WriteLine();
                         }
-
-                    } catch(Exception excp)
-                    {
-                        Console.WriteLine(excp.Message);
+                        Console.WriteLine(inode.SingleIndirectBlockPointer + " " + inode.DoubleIndirectBlockPointer + " " + inode.TripleIndirectBlockPointer);
+                        Console.ReadLine();
                     }
+
+                } catch(Exception excp)
+                {
+                    Console.WriteLine(excp.Message);
+                }
+                break;
+            */
+                #endregion
+                case "ramdisk":
+                    Drivers.Ramdisk ramdisk = new(8192);
+                    break;
+                case "highres":
+                    Cosmos.System.Graphics.VGAScreen.SetTextMode(Cosmos.HAL.Drivers.Video.VGADriver.TextSize.Size90x60);
+                    Console.SetWindowSize(90, 60);
                     break;
                 case "info":
-                    Console.WriteLine("SkyseaOS 0.1.2 [Milestone 0] | 2023.5.13");
+                    Console.WriteLine("SkyseaOS 0.2.0 [Milestone 1] | 2023.7.01");
                     Console.WriteLine("Made by husaral, powered by COSMOS (www.gocosmos.org)");
                     break;
                 case "shutdown":

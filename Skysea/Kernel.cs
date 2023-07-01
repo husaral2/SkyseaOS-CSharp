@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Skysea.Usage; //format works but it's still laggy so no users :(
+using System;
 using FS = Skysea.FileSystem;
 using Sys = Cosmos.System;
 
@@ -16,9 +17,9 @@ namespace Skysea
                 Console.Write("Initializing the filesystem: ");
                 FS.Controller.InitializeFilesystem();
                 Console.WriteLine("done!");
-                Console.Beep(587, 500);
-            }
-            catch(Exception excp)
+                //UserManager.UserList.Add(new User("0:\\testuser.conf", "Test"));
+                //UserManager.UserList[0].LoadPreferences();
+            }catch(Exception excp)
             {
                 Console.BackgroundColor = ConsoleColor.DarkMagenta;
                 Console.Clear();
@@ -30,7 +31,6 @@ namespace Skysea
                 Console.ReadKey();
                 Cosmos.Core.CPU.Reboot();
             }
-
 
             CLI.CommandFunction.Initalize();
             Console.ReadLine();
@@ -46,5 +46,6 @@ namespace Skysea
             string command = Console.ReadLine();
             CLI.CommandListener.Parse(command);
         }
+        
     }
 }

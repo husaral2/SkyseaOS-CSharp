@@ -8,36 +8,24 @@ namespace Skysea.CLI
     internal class CommandFunction
     {
         //All of the CLI functions listed in a dictionary - The word for invoking method | Invoked method
-        static Dictionary<string, Func<string, bool>> InternalFunctions = new Dictionary<string, Func<string, bool>>();
-        static Dictionary<string, Executable.Executable> Executables = new Dictionary<string, Executable.Executable>();
+        static Dictionary<string, Func<string, bool>> functions = new Dictionary<string, Func<string, bool>>();
         static string[] splitted;
 
         public static void Initalize()
         {
             //Set the keyboard layout
-            InternalFunctions.Add("kbd", delegate (string input) { 
+            functions.Add("kbd", delegate (string input) { 
                 return Usage.KeyboardSettings.ChangeKeyboard(input.Split(' ')[0]);
             });
 
             //Detailed disk information
-            InternalFunctions.Add("atainf", delegate (string input) {
+            functions.Add("atainf", delegate (string input) {
                 FS.DiskManager.GetDetailedInformation();
                 return true;
             });
 
-            //Execute an ELF executable
-            InternalFunctions.Add("execelf", delegate (string input)
-            {
-                Executable.Executable executable = Executable.Executable.FromELF32(Helper.ELFExecutable);
-                unsafe
-                {
-                    executable.Main();
-                }
-                return true;
-            });
-
             //Read a file's content
-            InternalFunctions.Add("read", delegate (string input) {
+            functions.Add("read", delegate (string input) {
                 splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 if (File.Exists(file))
@@ -48,7 +36,7 @@ namespace Skysea.CLI
                 return false;
             });
 
-            InternalFunctions.Add("cat", delegate (string input)
+            functions.Add("cat", delegate (string input)
             {
                 splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
@@ -66,7 +54,7 @@ namespace Skysea.CLI
             });
 
             //Create a new file
-            InternalFunctions.Add("new", delegate (string input) {
+            functions.Add("new", delegate (string input) {
                 string[] splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 if (file.IndexOfAny(FS.Controller.invalidCharacters) >= 0)
@@ -79,7 +67,7 @@ namespace Skysea.CLI
             });
 
             //Create a new directory
-            InternalFunctions.Add("newdir", delegate(string input)
+            functions.Add("nwdir", delegate(string input)
             {
                 splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
@@ -93,7 +81,7 @@ namespace Skysea.CLI
             });
 
             //Remove a file
-            InternalFunctions.Add("remove", delegate(string input) {
+            functions.Add("remove", delegate(string input) {
                 splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 if (File.Exists(file))
@@ -106,7 +94,7 @@ namespace Skysea.CLI
             });
 
             //Remove a directory
-            InternalFunctions.Add("rmdir", delegate (string input) {
+            functions.Add("rmdir", delegate (string input) {
                 splitted = Helper.SpecialSplit(input);
                 string file = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 if (Directory.Exists(file))
@@ -119,7 +107,7 @@ namespace Skysea.CLI
             });
 
             //Copy a file
-            InternalFunctions.Add("copy", delegate(string input) {
+            functions.Add("copy", delegate(string input) {
                 string[] splitted = Helper.SpecialSplit(input);
                 string src = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
                 string dst = Helper.FindPath(splitted[2], FS.Controller.GetCurrentDirectory());
@@ -133,7 +121,7 @@ namespace Skysea.CLI
             });
 
             //Move a file
-            InternalFunctions.Add("move", delegate(string input)
+            functions.Add("move", delegate(string input)
             {
                 splitted = Helper.SpecialSplit(input);
                 string src = Helper.FindPath(splitted[1], FS.Controller.GetCurrentDirectory());
@@ -149,7 +137,7 @@ namespace Skysea.CLI
             });
 
             //Formatting the drive in FAT32
-            InternalFunctions.Add("format", delegate (string input)
+            functions.Add("format", delegate (string input)
             {
                 splitted = input.Split(' ');
                 if (splitted.Length < 3)
@@ -179,17 +167,17 @@ namespace Skysea.CLI
                     return false;
             });
 
-            InternalFunctions.Add("cd", new Func<string, bool>(FS.FileManager.Navigate));
-            InternalFunctions.Add("dir", new Func<string, bool>(FS.FileManager.ListContents));
+            functions.Add("cd", new Func<string, bool>(FS.FileManager.Navigate));
+            functions.Add("dir", new Func<string, bool>(FS.FileManager.ListContents));
         }
 
         public static void Search(string input)
         {
-            foreach (string key in InternalFunctions.Keys)
+            foreach (string key in functions.Keys)
             {
                 if (input.Split(' ')[0] == key)
                 {
-                    InternalFunctions[key](input);
+                    functions[key](input);
                     return;
                 }
             }

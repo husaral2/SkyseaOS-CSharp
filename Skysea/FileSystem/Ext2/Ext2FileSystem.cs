@@ -15,8 +15,8 @@ namespace Skysea.FileSystem.Ext2
         public uint UnallocatedBlocks;
         public uint UnallocatedInodes;
         public uint BlockNumber; //block number of the block containing the superblock
-        public uint BlockSize;
-        public uint FragmentSize;
+        public uint BlockSize; //the number to shift 1024 to left to obtain block size
+        public uint FragmentSize; //the number to shift 1024 to left to obtaining fragment size
         public uint BlocksInAGroup;
         public uint FragmentsInAGroup;
         public uint InodesInAGroup;
@@ -60,18 +60,23 @@ namespace Skysea.FileSystem.Ext2
         public ushort CountOfHardLinks;
         public uint CountOfDiskSectors;
         public uint[] DirectBlockPointers;
+        public uint SingleIndirectBlockPointer;
+        public uint DoubleIndirectBlockPointer;
+        public uint TripleIndirectBlockPointer; // triple -> doubles -> many singles -> a lot of pointers
     }
 
     internal class Ext2FileSystem : Cosmos.System.FileSystem.FileSystem
     {
         private Partition xDevice;
         private SuperBlock xSB = new SuperBlock();
-        private uint SectorsPerBlock;
         List<BlockGroupDescriptor> xBlockGroups = new();
 
         public Ext2FileSystem(Partition aDevice, string aRootPath, long aSize) : base(aDevice, aRootPath, aSize)
         {
-            xDevice = aDevice ?? throw new ArgumentNullException("Partition is null");
+            if (aDevice == null)
+                throw new ArgumentNullException("Partition is null");
+
+            xDevice = aDevice;
 
             ReadTheSuperblock();
             ReadBlockGroupDescriptorTable();
@@ -112,8 +117,8 @@ namespace Skysea.FileSystem.Ext2
             Console.WriteLine("Total number of blocks: " + xSB.TotalNumberOfBlocks);
             Console.WriteLine("Total number of unallocated inodes: " + xSB.UnallocatedInodes);
             Console.WriteLine("Total number of unallocated inodes: " + xSB.UnallocatedBlocks);
-            Console.WriteLine("Block size: " + xSB.BlockSize);
-            Console.WriteLine("Fragment size: " + xSB.FragmentSize);
+            Console.WriteLine("Block size: " + (1024 << (int)xSB.BlockSize));
+            Console.WriteLine("Fragment size: " + (1024 << (int)xSB.FragmentSize));
             Console.WriteLine("Indoes per group: " + xSB.InodesInAGroup);
             Console.WriteLine("The number of first non-reserved inode: " + xSB.FirstNonReservedInode);
             Console.WriteLine("The block usage adress of the 1st block group: " + xBlockGroups[0].BlockUsageAdress);
@@ -147,8 +152,8 @@ namespace Skysea.FileSystem.Ext2
             xSB.UnallocatedBlocks = BitConverter.ToUInt32(superBlock, 12);
             xSB.UnallocatedInodes = BitConverter.ToUInt32(superBlock, 16);
             xSB.BlockNumber = BitConverter.ToUInt32(superBlock, 20);
-            xSB.BlockSize = (uint)1024 << BitConverter.ToInt32(superBlock, 24);
-            xSB.FragmentSize = (uint)1024 << BitConverter.ToInt32(superBlock, 28); //we need to shift 1024 to left the number in this fields times
+            xSB.BlockSize = BitConverter.ToUInt32(superBlock, 24);
+            xSB.FragmentSize = BitConverter.ToUInt32(superBlock, 28);
             xSB.BlocksInAGroup = BitConverter.ToUInt32(superBlock, 32);
             xSB.FragmentsInAGroup = BitConverter.ToUInt32(superBlock, 36);
             xSB.InodesInAGroup = BitConverter.ToUInt32(superBlock, 40);
@@ -168,17 +173,17 @@ namespace Skysea.FileSystem.Ext2
             xSB.GroupID = BitConverter.ToUInt16(superBlock, 82);
             xSB.FirstNonReservedInode = BitConverter.ToUInt32(superBlock, 84);
             xSB.InodeSize = BitConverter.ToUInt16(superBlock, 88);
-            SectorsPerBlock = (uint)(xSB.BlockSize / xDevice.BlockSize);
         }
 
         //The block group descriptor table because is cached because we will only read the FS
         public void ReadBlockGroupDescriptorTable()
         {
-            byte[] Table = xDevice.NewBlockArray(SectorsPerBlock);
-            xDevice.ReadBlock(SectorsPerBlock, SectorsPerBlock, ref Table);
+            uint blockCount = (uint)((1024 << (int) xSB.BlockSize) / (uint)xDevice.BlockSize);
+            byte[] Table = xDevice.NewBlockArray(blockCount);
+            xDevice.ReadBlock(blockCount, blockCount, ref Table);
             BlockGroupDescriptor bgd;
 
-            for(int i = 0; i < 64; ++i)
+            for(int i = 0; i < 128; ++i)
             {
                 bgd = new();
                 bgd.BlockUsageAdress = BitConverter.ToUInt32(Table, i * 32 + 0); //just for clarity
@@ -193,43 +198,37 @@ namespace Skysea.FileSystem.Ext2
 
         public Inode ReadInode(uint number)
         {
-            byte[] Table = xDevice.NewBlockArray(SectorsPerBlock);
+            uint blockCount = (uint)((1024 << (int)xSB.BlockSize) / (uint)xDevice.BlockSize);
+            byte[] Table = xDevice.NewBlockArray(blockCount);
 
-            int ContainingBGDsIndex = (int)((number - 1) / xSB.InodesInAGroup);
-            BlockGroupDescriptor ContainingBGD = xBlockGroups[ContainingBGDsIndex];
-            Console.WriteLine(ContainingBGD.InodeTableAdress);
+            int containingBlock = (int)((number - 1) / xSB.InodesInAGroup);
+            xDevice.ReadBlock(blockCount * xBlockGroups[containingBlock].InodeTableAdress, blockCount, ref Table);
 
             long index = (number - 1) % xSB.InodesInAGroup;
-            int containingBlocksIndex = (int) (index * xSB.InodeSize / xSB.BlockSize);
-            Console.WriteLine(xSB.InodeSize);
-
-            xDevice.ReadBlock(ContainingBGD.InodeTableAdress * SectorsPerBlock, SectorsPerBlock, ref Table);
+            int containingBlocksAddress = (int)(index * xSB.InodeSize / (1024 << (int)xSB.BlockSize));
 
             Inode inode = new();
-            inode.SizeLow32 = BitConverter.ToUInt32(Table, (int)(index * xSB.InodeSize + 4));
-            inode.LastAccessTime = BitConverter.ToUInt32(Table, (int)(index * xSB.InodeSize + 8));
-            inode.CreationTime = BitConverter.ToUInt32(Table, (int)(index * xSB.InodeSize + 12));
-            inode.LastModificationTime = BitConverter.ToUInt32(Table, (int)(index * xSB.InodeSize + 16));
-            inode.DeletionTime = BitConverter.ToUInt32(Table, (int)(index * xSB.InodeSize + 20));
-            inode.GroupID = BitConverter.ToUInt16(Table, (int)(index * xSB.InodeSize + 24));
-            inode.CountOfHardLinks = BitConverter.ToUInt16(Table, (int)(index * xSB.InodeSize + 26));
-            inode.CountOfDiskSectors = BitConverter.ToUInt32(Table, (int)(index * xSB.InodeSize + 28));
+            inode.SizeLow32 = BitConverter.ToUInt32(Table, containingBlocksAddress + 4);
+            inode.LastAccessTime = BitConverter.ToUInt32(Table, containingBlocksAddress + 8);
+            inode.CreationTime = BitConverter.ToUInt32(Table, containingBlocksAddress + 12);
+            inode.LastModificationTime = BitConverter.ToUInt32(Table, containingBlocksAddress + 16);
+            inode.DeletionTime = BitConverter.ToUInt32(Table, containingBlocksAddress + 20);
+            inode.GroupID = BitConverter.ToUInt16(Table, containingBlocksAddress + 24);
+            inode.CountOfHardLinks = BitConverter.ToUInt16(Table, containingBlocksAddress + 26);
+            inode.CountOfDiskSectors = BitConverter.ToUInt32(Table, containingBlocksAddress + 28);
 
             inode.DirectBlockPointers = new uint[12];
 
-            for (int i = 0; i < 15; ++i)
+            for (int i = 0; i < 12; ++i)
             {
-                inode.DirectBlockPointers[i] = BitConverter.ToUInt32(Table, (int)(index * xSB.InodeSize + 40) + i * 4);
+                inode.DirectBlockPointers[i] = BitConverter.ToUInt32(Table, containingBlocksAddress + 40 + i * 4);
             }
 
-            return inode;
-        }
+            inode.SingleIndirectBlockPointer = BitConverter.ToUInt32(Table, containingBlocksAddress + 88);
+            inode.DoubleIndirectBlockPointer = BitConverter.ToUInt32(Table, containingBlocksAddress + 92);
+            inode.TripleIndirectBlockPointer = BitConverter.ToUInt32(Table, containingBlocksAddress + 96);
 
-        public void GetDirectoryEntrysLocation(int index, Inode parent)
-        {
-            uint[] BlockPointers = parent.DirectBlockPointers;
-            byte[] TempBlock;
-            uint DirectoryBlock = index / (xSB.BlockSize / dir);
+            return inode;
         }
 
         public SuperBlock GetSuperBlock()

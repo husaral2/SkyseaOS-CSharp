@@ -10,6 +10,7 @@ namespace Skysea.FileSystem
     internal class DiskManager
     {
         public static ATA_PIO[] devices = new ATA_PIO[4];
+        public static List<RAMFS.RAMFSFileSystem> RamDisks = new List<RAMFS.RAMFSFileSystem>();
 
         public static void SearchForDisks()
         {
@@ -63,15 +64,16 @@ namespace Skysea.FileSystem
             }
         }
 
+        public static void CreateRamdisk(uint size)
+        {
+            RamDisks.Add(new RAMFS.RAMFSFileSystem(new Drivers.Ramdisk(size)));
+        }
+
         public static void Format(Partition device)
         {
             MBR mbr = new MBR(device.Host);
             mbr.CreateMBR(device.Host);
             mbr.WritePartitionInformation(device, 0);
-            byte[] signature = device.NewBlockArray(1);
-            signature[510] = 0x55;
-            signature[511] = 0xAA;
-            device.WriteBlock(0, 1, ref signature);
             FatFileSystemFactory fatFactory = new();
             Cosmos.System.FileSystem.FileSystem fatFs = fatFactory.Create(device, "0:\\", (long)(device.BlockCount * device.BlockSize / 1024));
             fatFs.Format("FAT32", true);
